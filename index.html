@@ -1,19 +1,115 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"
-    />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#000000" />
-    <title>Orbit Defender</title>
-  </head>
-  <body>
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>THE DEFENDER</title>
+    <style>
+        body {
+            margin: 0;
+            background: #050510;
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            touch-action: none;
+        }
+        canvas { background: radial-gradient(circle, #101030 0%, #050510 100%); }
+        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .menu {
+            pointer-events: all;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border: 2px solid #00f2ff;
+            border-radius: 15px;
+            text-align: center;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 20px;
+            margin: 10px;
+            cursor: pointer;
+            background: #00f2ff;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
     <canvas id="gameCanvas"></canvas>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+    
+    <div id="ui">
+        <div id="lobby" class="menu">
+            <h1 style="color: #00f2ff; text-shadow: 0 0 10px #00f2ff;">THE DEFENDER</h1>
+            <p>שיא: <span id="highScore">0</span></p>
+            <p>מטבעות: <span id="coins">0</span></p>
+            <button onclick="startGame()">שחק עכשיו!</button>
+            <button style="background: #ff00ff;" onclick="toggleShop()">חנות (בקרוב)</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let gameActive = false;
+
+        // התאמת גודל מסך
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // לוגיקה בסיסית כדי לוודא שזה עובד
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!gameActive) {
+                // אפקט רקע בלובי
+                ctx.strokeStyle = '#00f2ff33';
+                for(let i=0; i<canvas.width; i+=50) {
+                    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+                }
+            } else {
+                // ציור ליבה זמנית כדי לראות שהמשחק רץ
+                ctx.fillStyle = 'red';
+                ctx.beginPath();
+                ctx.arc(canvas.width/2, canvas.height/2, 30, 0, Math.PI*2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.fillText("המשחק רץ! גע במסך כדי לחזור", canvas.width/2, canvas.height/2 + 60);
+            }
+            requestAnimationFrame(draw);
+        }
+
+        function startGame() {
+            document.getElementById('lobby').classList.add('hidden');
+            gameActive = true;
+        }
+
+        canvas.addEventListener('touchstart', () => {
+            if(gameActive) {
+                gameActive = false;
+                document.getElementById('lobby').classList.remove('hidden');
+            }
+        });
+
+        // בדיקה שהסקריפט נטען
+        console.log("Defender Loaded Successfully!");
+        draw();
+    </script>
+</body>
 </html>

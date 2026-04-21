@@ -1,115 +1,466 @@
 <!DOCTYPE html>
-<html lang="he">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>THE DEFENDER</title>
     <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff00ff;
+            --gold: #ffcc00;
+        }
         body {
             margin: 0;
+            padding: 0;
             background: #050510;
             color: white;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            touch-action: none;
         }
-        canvas { background: radial-gradient(circle, #101030 0%, #050510 100%); }
-        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        .menu {
+        .menu-card {
             pointer-events: all;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border: 2px solid #00f2ff;
-            border-radius: 15px;
+            background: rgba(10, 10, 30, 0.95);
+            border: 2px solid var(--neon-blue);
+            border-radius: 20px;
+            padding: 30px;
             text-align: center;
+            box-shadow: 0 0 20px var(--neon-blue);
+            max-width: 90%;
+            width: 400px;
         }
+        h1 {
+            font-size: 3rem;
+            margin: 0 0 20px 0;
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue);
+            letter-spacing: 5px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 25px;
+            font-size: 1.2rem;
+        }
+        .stat-box { color: var(--gold); }
+        
         button {
-            padding: 15px 30px;
-            font-size: 20px;
-            margin: 10px;
-            cursor: pointer;
-            background: #00f2ff;
-            border: none;
-            border-radius: 5px;
+            pointer-events: all;
+            width: 80%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 1.5rem;
             font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s;
         }
-        .hidden { display: none; }
+        button:active { transform: scale(0.95); }
+        .btn-play { background: var(--neon-blue); color: #000; }
+        .btn-shop { background: var(--neon-pink); color: #fff; }
+        
+        /* Shop Grid */
+        .shop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .shop-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+        .shop-item.owned { border-color: var(--gold); }
+        .item-icon { height: 40px; margin-bottom: 5px; }
+        .price { color: var(--gold); font-weight: bold; }
+
+        .hidden { display: none !important; }
+        
+        /* Carousel Arrows */
+        .carousel {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .arrow {
+            font-size: 2rem;
+            color: var(--neon-blue);
+            cursor: pointer;
+            pointer-events: all;
+        }
+        #theme-name { font-size: 1.5rem; min-width: 150px; }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="ui">
-        <div id="lobby" class="menu">
-            <h1 style="color: #00f2ff; text-shadow: 0 0 10px #00f2ff;">THE DEFENDER</h1>
-            <p>שיא: <span id="highScore">0</span></p>
-            <p>מטבעות: <span id="coins">0</span></p>
-            <button onclick="startGame()">שחק עכשיו!</button>
-            <button style="background: #ff00ff;" onclick="toggleShop()">חנות (בקרוב)</button>
+<canvas id="gameCanvas"></canvas>
+
+<div id="ui-layer">
+    <div id="main-menu" class="menu-card">
+        <h1>THE DEFENDER</h1>
+        
+        <div class="stats">
+            <div>BEST: <span id="high-score">0</span></div>
+            <div class="stat-box">COINS: <span id="total-coins">0</span></div>
         </div>
+
+        <div class="carousel">
+            <div class="arrow" onclick="changeTheme(-1)">◀</div>
+            <div id="theme-name">SPACE</div>
+            <div class="arrow" onclick="changeTheme(1)">▶</div>
+        </div>
+
+        <button class="btn-play" onclick="initGame()">PLAY</button>
+        <button class="btn-shop" onclick="openShop()">SHOP</button>
     </div>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        let gameActive = false;
+    <div id="shop-menu" class="menu-card hidden">
+        <h2>UPGRADES</h2>
+        <div class="stat-box">YOUR COINS: <span id="shop-coins">0</span></div>
+        <div class="shop-grid" id="shop-items-container">
+            </div>
+        <button class="btn-play" style="margin-top:20px" onclick="closeShop()">BACK</button>
+    </div>
 
-        // התאמת גודל מסך
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+    <div id="game-over" class="menu-card hidden">
+        <h2 id="over-title">GAME OVER</h2>
+        <p id="final-score">SCORE: 0</p>
+        <p class="stat-box">COINS EARNED: +<span id="earned-coins">0</span></p>
+        <button class="btn-play" onclick="initGame()">TRY AGAIN</button>
+        <button class="btn-shop" onclick="showMenu()">LOBBY</button>
+    </div>
+</div>
+
+<script>
+/** * GAME ENGINE 
+ * THE DEFENDER - PRO VERSION
+ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// --- Game State ---
+let state = 'MENU';
+let score = 0;
+let coinsCollected = 0;
+let lives = 3;
+let totalCoins = parseInt(localStorage.getItem('defender_coins')) || 0;
+let highScores = JSON.parse(localStorage.getItem('defender_scores')) || {SPACE:0, CAT:0, DEFENSE:0, COMMANDER:0};
+
+const themes = ['SPACE', 'CAT WORLD', 'IRON DOME', 'COMMANDER'];
+let currentThemeIdx = 0;
+
+// --- Upgrades ---
+let upgrades = JSON.parse(localStorage.getItem('defender_upgrades')) || {
+    titanium: false,
+    extraHeart: false,
+    magnet: false,
+    slowmo: false
+};
+
+const shopItems = [
+    { id: 'titanium', name: 'Titanium Wall', price: 100, desc: 'Wider Shield' },
+    { id: 'extraHeart', name: 'Extra Heart', price: 150, desc: 'Start with 4 Lives' },
+    { id: 'magnet', name: 'Coin Magnet', price: 200, desc: 'Auto-collect Gold' },
+    { id: 'slowmo', name: 'Time Potion', price: 250, desc: 'Slow enemies down' }
+];
+
+// --- Physics ---
+let joystick = { active: false, x: 0, y: 0, angle: 0 };
+let shieldAngle = 0;
+let enemies = [];
+let particles = [];
+let gameCoins = [];
+let lastSpawn = 0;
+let spawnRate = 1500;
+
+// --- Initialize ---
+function showMenu() {
+    state = 'MENU';
+    document.getElementById('main-menu').classList.remove('hidden');
+    document.getElementById('game-over').classList.add('hidden');
+    document.getElementById('total-coins').innerText = totalCoins;
+    document.getElementById('high-score').innerText = highScores[themes[currentThemeIdx].split(' ')[0]];
+}
+
+function changeTheme(dir) {
+    currentThemeIdx = (currentThemeIdx + dir + themes.length) % themes.length;
+    document.getElementById('theme-name').innerText = themes[currentThemeIdx];
+    document.getElementById('high-score').innerText = highScores[themes[currentThemeIdx].split(' ')[0]] || 0;
+}
+// --- Game Logic ---
+function initGame() {
+    state = 'PLAYING';
+    score = 0;
+    coinsCollected = 0;
+    lives = upgrades.extraHeart ? 4 : 3;
+    enemies = [];
+    gameCoins = [];
+    particles = [];
+    spawnRate = 1500;
+    document.getElementById('main-menu').classList.add('hidden');
+    document.getElementById('game-over').classList.add('hidden');
+    document.getElementById('shop-menu').classList.add('hidden');
+}
+
+function update() {
+    if (state !== 'PLAYING') return;
+
+    const now = Date.now();
+    if (now - lastSpawn > spawnRate) {
+        spawnEnemy();
+        if (Math.random() > 0.7) spawnCoin();
+        lastSpawn = now;
+        spawnRate = Math.max(600, spawnRate * 0.99);
+    }
+
+    // Move Enemies
+    enemies.forEach((en, i) => {
+        const dx = canvas.width / 2 - en.x;
+        const dy = canvas.height / 2 - en.y;
+        const dist = Math.hypot(dx, dy);
+        const vx = (dx / dist) * en.speed;
+        const vy = (dy / dist) * en.speed;
+
+        en.x += vx;
+        en.y += vy;
+
+        // Collision with shield
+        const angleToEnemy = Math.atan2(en.y - canvas.height / 2, en.x - canvas.width / 2);
+        const diff = Math.abs((angleToEnemy - shieldAngle + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+        const shieldWidth = upgrades.titanium ? 1.2 : 0.8;
+
+        if (dist < 100 && dist > 70 && diff < shieldWidth) {
+            enemies.splice(i, 1);
+            score++;
+            createExplosion(en.x, en.y, en.color);
+        } else if (dist < 40) {
+            enemies.splice(i, 1);
+            lives--;
+            if (lives <= 0) gameOver();
         }
-        window.addEventListener('resize', resize);
-        resize();
+    });
 
-        // לוגיקה בסיסית כדי לוודא שזה עובד
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            if (!gameActive) {
-                // אפקט רקע בלובי
-                ctx.strokeStyle = '#00f2ff33';
-                for(let i=0; i<canvas.width; i+=50) {
-                    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-                }
-            } else {
-                // ציור ליבה זמנית כדי לראות שהמשחק רץ
-                ctx.fillStyle = 'red';
-                ctx.beginPath();
-                ctx.arc(canvas.width/2, canvas.height/2, 30, 0, Math.PI*2);
-                ctx.fill();
-                
-                ctx.fillStyle = 'white';
-                ctx.textAlign = 'center';
-                ctx.fillText("המשחק רץ! גע במסך כדי לחזור", canvas.width/2, canvas.height/2 + 60);
+    // Move Coins
+    gameCoins.forEach((c, i) => {
+        const dx = canvas.width / 2 - c.x;
+        const dy = canvas.height / 2 - c.y;
+        const dist = Math.hypot(dx, dy);
+        
+        let speed = upgrades.magnet ? 6 : 3;
+        c.x += (dx / dist) * speed;
+        c.y += (dy / dist) * speed;
+
+        if (dist < 40) {
+            gameCoins.splice(i, 1);
+            coinsCollected++;
+        } else {
+            // Check if shield hits coin (punishment)
+            const angleToCoin = Math.atan2(c.y - canvas.height / 2, c.x - canvas.width / 2);
+            const diff = Math.abs((angleToCoin - shieldAngle + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+            if (!upgrades.magnet && dist < 100 && dist > 70 && diff < 0.8) {
+                gameCoins.splice(i, 1); // Lost coin!
             }
-            requestAnimationFrame(draw);
         }
+    });
+}
 
-        function startGame() {
-            document.getElementById('lobby').classList.add('hidden');
-            gameActive = true;
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    if (state === 'PLAYING') {
+        // Draw Core based on Theme
+        drawCore(centerX, centerY);
+
+        // Draw Shield
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(shieldAngle);
+        drawShieldByType();
+        ctx.restore();
+
+        // Draw HUD
+        ctx.fillStyle = 'white';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`SCORE: ${score}`, 20, 40);
+        ctx.fillStyle = '#ffcc00';
+        ctx.fillText(`COINS: ${coinsCollected}`, 20, 70);
+        
+        for(let i=0; i<lives; i++) {
+            ctx.fillText('❤️', canvas.width - 40 - (i*35), 40);
         }
+    }
+    update();
+    requestAnimationFrame(draw);
+}
 
-        canvas.addEventListener('touchstart', () => {
-            if(gameActive) {
-                gameActive = false;
-                document.getElementById('lobby').classList.remove('hidden');
-            }
-        });
+function drawCore(x, y) {
+    const theme = themes[currentThemeIdx];
+    if (theme === 'CAT WORLD') {
+        ctx.font = '60px Arial';
+        ctx.fillText('🥣', x - 30, y + 20); // Cream bowl
+    } else if (theme === 'COMMANDER') {
+        ctx.font = '60px Arial';
+        ctx.fillText('👱‍♂️', x - 30, y + 20); // Trump
+    } else if (theme === 'IRON DOME') {
+        ctx.fillStyle = '#555';
+        ctx.fillRect(x-40, y, 80, 20); // City skyline
+    } else {
+        ctx.fillStyle = '#00f2ff';
+        ctx.beginPath(); ctx.arc(x, y, 30, 0, Math.PI*2); ctx.fill();
+    }
+}
 
-        // בדיקה שהסקריפט נטען
-        console.log("Defender Loaded Successfully!");
-        draw();
-    </script>
+function drawShieldByType() {
+    const theme = themes[currentThemeIdx];
+    const width = upgrades.titanium ? 1.2 : 0.8;
+    
+    if (theme === 'CAT WORLD') {
+        ctx.font = '50px Arial';
+        ctx.fillText('🐾', 70, 20); // Cat Paw
+    } else if (theme === 'COMMANDER') {
+        // MAGA HAT
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.ellipse(85, 0, 25, 20, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillRect(95, -15, 20, 30); // Brim
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 10px Arial';
+        ctx.fillText('MAGA', 75, 5);
+    } else {
+        ctx.strokeStyle = '#00f2ff';
+        ctx.lineWidth = 15;
+        ctx.beginPath();
+        ctx.arc(0, 0, 90, -width, width);
+        ctx.stroke();
+    }
+}
+
+// --- Interaction ---
+window.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    joystick.active = true;
+    updateShieldAngle(t.clientX, t.clientY);
+});
+window.addEventListener('touchmove', (e) => {
+    if (joystick.active) updateShieldAngle(e.touches[0].clientX, e.touches[0].clientY);
+});
+window.addEventListener('touchend', () => joystick.active = false);
+
+function updateShieldAngle(tx, ty) {
+    shieldAngle = Math.atan2(ty - canvas.height / 2, tx - canvas.width / 2);
+}
+
+function spawnEnemy() {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.max(canvas.width, canvas.height);
+    enemies.push({
+        x: canvas.width / 2 + Math.cos(angle) * dist,
+        y: canvas.height / 2 + Math.sin(angle) * dist,
+        speed: 2 + Math.random() * 3,
+        color: themes[currentThemeIdx] === 'CAT WORLD' ? '#888' : '#ff00ff'
+    });
+}
+
+function spawnCoin() {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.max(canvas.width, canvas.height);
+    gameCoins.push({
+        x: canvas.width / 2 + Math.cos(angle) * dist,
+        y: canvas.height / 2 + Math.sin(angle) * dist
+    });
+}
+
+function gameOver() {
+    state = 'OVER';
+    totalCoins += coinsCollected;
+    localStorage.setItem('defender_coins', totalCoins);
+    const themeKey = themes[currentThemeIdx].split(' ')[0];
+    if (score > highScores[themeKey]) {
+        highScores[themeKey] = score;
+        localStorage.setItem('defender_scores', JSON.stringify(highScores));
+    }
+    document.getElementById('game-over').classList.remove('hidden');
+    document.getElementById('final-score').innerText = `SCORE: ${score}`;
+    document.getElementById('earned-coins').innerText = coinsCollected;
+}
+
+// --- Shop Logic ---
+function openShop() {
+    document.getElementById('main-menu').classList.add('hidden');
+    document.getElementById('shop-menu').classList.remove('hidden');
+    document.getElementById('shop-coins').innerText = totalCoins;
+    renderShop();
+}
+
+function renderShop() {
+    const container = document.getElementById('shop-items-container');
+    container.innerHTML = shopItems.map(item => `
+        <div class="shop-item ${upgrades[item.id] ? 'owned' : ''}">
+            <div class="item-name">${item.name}</div>
+            <div class="price">${upgrades[item.id] ? 'OWNED' : item.price + ' 💰'}</div>
+            <button onclick="buyItem('${item.id}', ${item.price})" ${upgrades[item.id] ? 'disabled' : ''} 
+                    style="font-size: 12px; padding: 5px; background: ${upgrades[item.id] ? '#555' : 'var(--gold)'}">
+                ${upgrades[item.id] ? 'EQUIPPED' : 'BUY'}
+            </button>
+        </div>
+    `).join('');
+}
+
+function buyItem(id, price) {
+    if (totalCoins >= price && !upgrades[id]) {
+        totalCoins -= price;
+        upgrades[id] = true;
+        localStorage.setItem('defender_coins', totalCoins);
+        localStorage.setItem('defender_upgrades', JSON.stringify(upgrades));
+        openShop();
+    }
+}
+
+function closeShop() {
+    document.getElementById('shop-menu').classList.add('hidden');
+    showMenu();
+}
+
+function createExplosion(x, y, color) {
+    // Particle effect logic can go here
+}
+
+// Start
+showMenu();
+draw();
+</script>
 </body>
 </html>
